@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的追星筆記</title>
+    <style>
+        :root {
+            --primary-color: #f8f9fa;
+            --accent-color: #6c5ce7;
+            --text-color: #2d3436;
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 導航列 */
+        nav {
+            width: 100%;
+            background: white;
+            padding: 15px 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav button {
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: #b2bec3;
+            padding: 5px 10px;
+        }
+
+        nav button.active {
+            color: var(--accent-color);
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            padding: 20px 0;
+        }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* 卡片樣式 */
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+        }
+
+        h2 { margin-top: 0; font-size: 1.5rem; }
+
+        /* 表單樣式 */
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #dfe6e9;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        button.submit-btn {
+            width: 100%;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* 列表樣式 */
+        .item-list { margin-top: 20px; }
+        .item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 5px solid var(--accent-color);
+        }
+
+        .item-header { display: flex; justify-content: space-between; font-weight: bold; }
+        .item-date { font-size: 0.8rem; color: #636e72; }
+        .summary-box { text-align: center; font-size: 1.2rem; margin-bottom: 20px; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+<nav>
+    <button onclick="showSection('summary')" id="nav-summary" class="active">總覽</button>
+    <button onclick="showSection('spending')" id="nav-spending">支出</button>
+    <button onclick="showSection('concert')" id="nav-concert">演唱會</button>
+</nav>
+
+<div class="container">
+    <div id="section-summary" class="section active">
+        <div class="card">
+            <h2>累積追星支出</h2>
+            <div id="total-amount" class="summary-box" style="font-size: 2rem; color: var(--accent-color);">$ 0</div>
+        </div>
+    </div>
+
+    <div id="section-spending" class="section">
+        <div class="card">
+            <h2>新增支出</h2>
+            <input type="date" id="spend-date">
+            <input type="text" id="spend-item" placeholder="項目 (例如：專輯)">
+            <input type="number" id="spend-amount" placeholder="金額">
+            <button class="submit-btn" onclick="saveSpending()">儲存記錄</button>
+        </div>
+        <div id="spending-list" class="item-list"></div>
+    </div>
+
+    <div id="section-concert" class="section">
+        <div class="card">
+            <h2>演唱會存摺</h2>
+            <input type="date" id="concert-date">
+            <input type="text" id="concert-name" placeholder="活動名稱">
+            <input type="text" id="concert-venue" placeholder="地點">
+            <textarea id="concert-note" placeholder="當天的心得..."></textarea>
+            <button class="submit-btn" onclick="saveConcert()">記錄這一天</button>
+        </div>
+        <div id="concert-list" class="item-list"></div>
+    </div>
+</div>
+
+<script>
+    // 初始化與切換頁面
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById('section-' + id).classList.add('active');
+        document.getElementById('nav-' + id).classList.add('active');
+        renderData();
+    }
+
+    // 儲存支出
+    function saveSpending() {
+        const date = document.getElementById('spend-date').value;
+        const item = document.getElementById('spend-item').value;
+        const amount = document.getElementById('spend-amount').value;
+
+        if(!date || !item || !amount) return alert('請填寫完整資訊');
+
+        const spendings = JSON.parse(localStorage.getItem('spendings') || '[]');
+        spendings.push({ date, item, amount: parseInt(amount) });
+        localStorage.setItem('spendings', JSON.stringify(spendings));
+        
+        // 清空輸入
+        document.getElementById('spend-item').value = '';
+        document.getElementById('spend-amount').value = '';
+        renderData();
+    }
+
+    // 儲存演唱會
+    function saveConcert() {
+        const date = document.getElementById('concert-date').value;
+        const name = document.getElementById('concert-name').value;
+        const venue = document.getElementById('concert-venue').value;
+        const note = document.getElementById('concert-note').value;
+
+        if(!date || !name) return alert('請填寫日期與活動名稱');
+
+        const concerts = JSON.parse(localStorage.getItem('concerts') || '[]');
+        concerts.push({ date, name, venue, note });
+        localStorage.setItem('concerts', JSON.stringify(concerts));
+
+        document.getElementById('concert-name').value = '';
+        document.getElementById('concert-venue').value = '';
+        document.getElementById('concert-note').value = '';
+        renderData();
+    }
+
+    // 渲染資料
+    function renderData() {
+        const spendings = JSON.parse(localStorage.getItem('spendings') || '[]');
+        const concerts = JSON.parse(localStorage.getItem('concerts') || '[]');
+
+        // 計算總金額
+        const total = spendings.reduce((sum, curr) => sum + curr.amount, 0);
+        document.getElementById('total-amount').innerText = `$ ${total.toLocaleString()}`;
+
+        // 渲染支出列表
+        const spendList = document.getElementById('spending-list');
+        spendList.innerHTML = spendings.reverse().map(s => `
+            <div class="item">
+                <div class="item-header"><span>${s.item}</span><span>$${s.amount}</span></div>
+                <div class="item-date">${s.date}</div>
+            </div>
+        `).join('');
+
+        // 渲染演唱會列表
+        const concertList = document.getElementById('concert-list');
+        concertList.innerHTML = concerts.reverse().map(c => `
+            <div class="item" style="border-left-color: #00cec9;">
+                <div class="item-header"><span>${c.name}</span></div>
+                <div class="item-date">${c.date} @ ${c.venue}</div>
+                <div style="font-size: 0.9rem; margin-top: 8px;">${c.note}</div>
+            </div>
+        `).join('');
+    }
+
+    // 頁面加載時先渲染一次
+    window.onload = renderData;
+</script>
+
+</body>
+</html>
